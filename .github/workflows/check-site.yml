@@ -1,0 +1,28 @@
+name: check-site
+
+# The legal pages here have to say exactly what the Bríq app says. This runs
+# tools/check-site.py on every change to main so a drift cannot be published
+# unnoticed. It only reads the checkout: nothing is deployed from here, because
+# the site is published by GitHub Pages from the main branch itself.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      # actions/checkout v7.0.1, pinned to its commit SHA.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Show the Python the runner provides
+        run: python3 --version
+
+      - name: Run the site checks
+        run: python3 tools/check-site.py
