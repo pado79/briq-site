@@ -1,0 +1,44 @@
+{
+  "categories": [
+    "Your email address, to create your account",
+    "The name you would like us to call you, if you give one",
+    "Your language choice, saved to your account so it follows you to a new phone, and whether you have finished the setup questions",
+    "Your accessibility settings, such as text size, a dyslexia-friendly font and high contrast, saved to your account so they follow you to a new phone",
+    "Profile information you choose to provide",
+    "Financial information you enter: income and tax details, budgets, transactions, savings goals, debts, pensions, insurance policies and bills",
+    "A first name and an age band for each child profile you set up in Kids Zone"
+  ],
+  "date": "18 November 2026",
+  "emails": [
+    "privacy@briq.ie",
+    "support@briq.ie"
+  ],
+  "entity": {
+    "contactEmail": "privacy@briq.ie",
+    "name": "Patrick Carroll",
+    "postalAddress": null,
+    "registrationNumber": null
+  },
+  "processors": [
+    "Supabase",
+    "Postmark",
+    "Apple",
+    "Google",
+    "RevenueCat",
+    "Expo",
+    "Sentry",
+    "Resend",
+    "Microsoft"
+  ],
+  "purposes": [
+    "Provide and maintain app functionality",
+    "Process tax calculations and financial insights",
+    "Track Kids Zone progress and achievements",
+    "Send you reminders you have asked for, such as a bill falling due",
+    "Send important updates about the app",
+    "Find and fix faults, using diagnostic reports",
+    "Respond to your requests and support enquiries",
+    "Keep the app and your account secure",
+    "Comply with legal obligations"
+  ]
+}

@@ -1,0 +1,5 @@
+# Python bytecode. tools/check-site.py is run directly and imported by the app
+# repository's drift test, and an import writes __pycache__ beside it. A .pyc has
+# no business in a repository that GitHub Pages serves verbatim.
+__pycache__/
+*.py[cod]
