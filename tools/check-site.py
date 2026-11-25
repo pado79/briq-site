@@ -91,9 +91,22 @@ BANNED = [
 #
 # THIS IS THE FALLBACK, used only when --app is not given. With --app the list
 # is parsed out of the app's privacy policy instead, so it cannot go stale.
+#
+# ⚠️ AND IT DID GO STALE, WHICH IS WHY THE NOTE ABOVE IS NOT THE WHOLE STORY. The fallback
+# carried "Postmark" until 24 November 2026, and Postmark was never a processor: it was disclosed
+# on the strength of a stale pm-bounces DNS record on briq.ie, and the app's own
+# constants/processors.ts admitted at the time that the finding was not provable from the repo.
+# Resend is the confirmed sender of the sign-in mail, and it was already on this list for the
+# mail a user chooses to send, so the authentication purpose merges into its entry and THE COUNT
+# FALLS FROM NINE TO EIGHT. Nothing is added.
+#
+# ⚠️ THE LESSON FOR THIS CONSTANT, NOT ONLY THE CORRECTION. A hardcoded list in the fallback path
+# is invisible for as long as CI uses --app, so it can disagree with the app for weeks and only
+# fail for a developer running the script bare. That is exactly what happened here: --app passed
+# and the bare run was the only thing that caught it. Anyone editing the app's recipient list
+# must edit this too, or delete the fallback and make --app mandatory.
 EXPECTED_RECIPIENTS = [
     "Supabase",
-    "Postmark",
     "Apple",
     "Google",
     "RevenueCat",
