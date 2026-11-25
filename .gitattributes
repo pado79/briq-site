@@ -1,0 +1,11 @@
+# Line endings are LF in the repository AND in the working tree, on every platform.
+#
+# Why this file exists: the app repository vendors this site's legal extract as its record of
+# what is published, and a case in that repository compares the two copies. Without this file a
+# Windows checkout here lands CRLF while the app's checkout is LF, so the two files differ on
+# every line while saying exactly the same thing. That is a diff nobody can act on, and it hid a
+# real failure once: the extract had gone stale while this repository advanced, and the
+# comparison was red for that reason and for the line endings at the same time.
+#
+# These are static pages served as-is, so LF everywhere is also simply what is served.
+* text=auto eol=lf
