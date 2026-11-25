@@ -21,7 +21,6 @@
   },
   "processors": [
     "Supabase",
-    "Postmark",
     "Apple",
     "Google",
     "RevenueCat",
