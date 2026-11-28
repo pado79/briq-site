@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Opening Bríq</title>
+<!--
+  ⚠️ ROOT-ABSOLUTE, NOT `../style.css`, AND THE REASON IS THAT THIS FILE IS SERVED AT THREE
+  DEPTHS. It is the page at /auth/, /auth/reset-password/ and /auth/callback/ — the same bytes at
+  each, because the script below decides what to do from `location.pathname` rather than from
+  which copy was loaded. A relative `../style.css` resolves to /style.css at /auth/ and to
+  /auth/style.css one level down, which is a 404, so the two deeper copies would have rendered
+  unstyled on the exact screens this page exists to rescue. An absolute path is correct at every
+  depth and keeps the three files byte-identical, which is what `tools/check-site.py` asserts.
+-->
+<link rel="stylesheet" href="/style.css">
+<!--
+  THE AUTH LINK LANDING PAGE.
+
+  ⚠️ WHAT THIS EXISTS FOR. Supabase sends the password reset and confirmation links, and until now
+  they ended at a custom scheme, briq://auth/reset-password. On a phone with the app that opens
+  the app, which is device confirmed. On a DESKTOP the scheme cannot be opened at all and the
+  browser shows about:blank: no page, no message, nothing to tell the person what went wrong or
+  what to do instead. This page is what they see instead.
+
+  ⚠️ IT NEVER READS, LOGS OR STORES THE TOKEN, AND THAT IS THE WHOLE DESIGN RULE HERE. The one
+  time code arrives in the query string. This page passes location.search and location.hash to
+  the app UNREAD and UNPARSED, as opaque text. It does not look inside them, does not put them
+  in the DOM, does not send them anywhere, and does not keep them. There is no analytics, no
+  third party script, no font, no image and no cookie on this page. Every byte is served from
+  this repository.
+
+  ⚠️ AND THERE IS NO SERVER TO LEAK TO EITHER. This is a static page on GitHub Pages. A query
+  string does reach the hosting provider's request log, which is why the forward happens in the
+  browser rather than as a redirect we could have asked a server to perform: the less that
+  touches the token the better, and a static host is the least that can.
+
+  ⚠️ WHY THE FORWARD USES THE CUSTOM SCHEME AND NOT AN APP LINK. The app DELIBERATELY DOES NOT
+  CLAIM https://briq.ie: the associatedDomains and intentFilters declarations were removed, and
+  __tests__/repo/appLinksDeclarations.test.ts in the app repository is a gate that keeps them
+  removed. So this https URL can never be handed to the app by the operating system. It is a
+  waypoint whose only job is to bounce to briq:// in JavaScript, which needs no domain claim.
+-->
+<style>
+  /* Inline, so the page still reads if style.css fails: this is a page people reach when
+     something has already gone wrong. */
+  .auth-wrap { max-width: 34rem; margin: 0 auto; padding: 2rem 1rem; }
+  .auth-wrap h1 { margin: 0 0 1rem; }
+  .auth-wrap p { margin: 0 0 1rem; }
+  .auth-wrap .ga { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #ccc; }
+  .auth-wrap .quiet { color: #5a5a5a; font-size: 0.95rem; }
+  #waiting[hidden], #stuck[hidden] { display: none; }
+</style>
+</head>
+<body>
+<!--
+  The skip link and `id="main"` are the site's standing chrome, enforced for every page by
+  tools/check-site.py. This page is short, but a page reached in the middle of a password reset
+  is exactly the wrong one to make an accessibility exception for.
+-->
+<a class="skip" href="#main">Skip to content</a>
+<main id="main" class="auth-wrap">
+
+  <h1>Bríq</h1>
+
+  <!-- Shown while the forward is being attempted. Phones only: the script reveals it. -->
+  <div id="waiting" hidden>
+    <p>Opening Bríq.</p>
+    <p class="ga">Bríq á oscailt.</p>
+  </div>
+
+  <!--
+    The message for a desktop, and for a phone where the app did not open within two seconds.
+    ⚠️ IT IS THE DEFAULT STATE RATHER THAN A FALLBACK THE SCRIPT HAS TO REACH. With JavaScript
+    off, or if the script throws, this is what the page already says, which is the right answer
+    for a desktop and an honest one for a phone.
+  -->
+  <div id="stuck">
+    <p>Open this link on the phone where Bríq is installed.</p>
+    <p class="quiet">This link only works inside the app. There is nothing to do on this page.</p>
+
+    <div class="ga">
+      <p>Oscail an nasc seo ar an bhfón ina bhfuil Bríq suiteáilte.</p>
+      <p class="quiet">Ní oibríonn an nasc seo ach taobh istigh den aip. Níl aon rud le déanamh ar an leathanach seo.</p>
+    </div>
+  </div>
+
+</main>
+<script>
+/*
+ * ⚠️ THE PATH IS TAKEN FROM THE URL AND THEN CHECKED AGAINST A FIXED LIST, NOT INTERPOLATED.
+ * Without the list, /auth/anything would build briq://auth/anything and this page would be an
+ * open redirector into the app's deep link surface. Only the auth routes that actually receive a
+ * link are allowed; anything else shows the message and forwards nowhere.
+ */
+(function () {
+  'use strict';
+
+  var ALLOWED = ['reset-password', 'callback'];
+
+  // Everything after /auth/, without a trailing slash. "" for /auth/ itself.
+  var path = window.location.pathname
+    .replace(/^.*\/auth\/?/, '')
+    .replace(/\/+$/, '');
+
+  var isPhone = /Android|iPhone|iPad|iPod/i.test(window.navigator.userAgent);
+
+  if (!isPhone || ALLOWED.indexOf(path) === -1) {
+    // Desktop, or a path we do not forward. The page already says the right thing.
+    return;
+  }
+
+  /*
+   * ⚠️ `search` AND `hash` ARE PASSED THROUGH UNREAD. The app's reset route reads `code` from
+   * the query string, so the query is what matters today; the hash is carried as well because a
+   * Supabase link can carry one and dropping it would silently break a flow this page is meant
+   * to rescue. Neither is parsed, inspected or logged here.
+   */
+  var target = 'briq://auth/' + path + window.location.search + window.location.hash;
+
+  document.getElementById('stuck').hidden = true;
+  document.getElementById('waiting').hidden = false;
+
+  /*
+   * ⚠️ IF THE APP OPENS, THIS PAGE IS BACKGROUNDED AND THE TIMER SHOULD NOT FIRE. Two seconds,
+   * as specified. `visibilityState` is the check that tells "the app took over" from "nothing
+   * happened", and without it a phone that DID open the app would come back to an error message
+   * when the user returned to the browser.
+   */
+  window.setTimeout(function () {
+    if (document.visibilityState === 'hidden') {
+      return;
+    }
+    document.getElementById('waiting').hidden = true;
+    document.getElementById('stuck').hidden = false;
+  }, 2000);
+
+  window.location.href = target;
+})();
+</script>
+</body>
+</html>

@@ -5,7 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Opening Bríq</title>
-<link rel="stylesheet" href="../style.css">
+<!--
+  ⚠️ ROOT-ABSOLUTE, NOT `../style.css`, AND THE REASON IS THAT THIS FILE IS SERVED AT THREE
+  DEPTHS. It is the page at /auth/, /auth/reset-password/ and /auth/callback/ — the same bytes at
+  each, because the script below decides what to do from `location.pathname` rather than from
+  which copy was loaded. A relative `../style.css` resolves to /style.css at /auth/ and to
+  /auth/style.css one level down, which is a 404, so the two deeper copies would have rendered
+  unstyled on the exact screens this page exists to rescue. An absolute path is correct at every
+  depth and keeps the three files byte-identical, which is what `tools/check-site.py` asserts.
+-->
+<link rel="stylesheet" href="/style.css">
 <!--
   THE AUTH LINK LANDING PAGE.
 

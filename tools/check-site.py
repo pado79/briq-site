@@ -327,6 +327,89 @@ def printed_date(raw):
     return (found.group(1) if found else None), text.strip()
 
 
+#: The auth forwarder is served at these three paths, and the two deeper ones are
+#: the URLs Supabase actually sends. /auth/ alone is reachable but is NOT a route
+#: the forwarder forwards: its ALLOWED list names only the two below, so the bare
+#: path shows the "open this on your phone" message and goes nowhere.
+AUTH_FORWARDER_PATHS = (
+    "auth/index.html",
+    "auth/reset-password/index.html",
+    "auth/callback/index.html",
+)
+
+#: Fragments that together ARE the forwarding logic. Each is load-bearing: without
+#: the allow-list the page is an open redirector into the app's deep-link surface,
+#: without the pathname read it cannot tell the two routes apart, and without the
+#: scheme target it forwards nowhere at all.
+AUTH_FORWARDER_MARKERS = (
+    ("var ALLOWED = ['reset-password', 'callback']", "the route allow-list"),
+    ("window.location.pathname", "the pathname read that picks the route"),
+    ("'briq://auth/' + path", "the custom-scheme target"),
+)
+
+
+def check_auth_forwarders(root, html_files):
+    """(g) The auth forwarder exists at every path Supabase sends, is not the 404
+    page, and still carries its forwarding logic.
+
+    THIS EXISTS BECAUSE THE PAGE WAS PUBLISHED AND REACHED BY NOBODY. The
+    forwarder was added at /auth/index.html only, while Supabase sends
+    /auth/reset-password?code=... and /auth/callback?code=... - neither of which
+    was a file, so GitHub Pages served 404.html. Somebody resetting a password on
+    a desktop got "Page not found" instead of the instruction this page exists to
+    give them, and every check passed throughout: the page WAS live, at a URL
+    nothing links to.
+
+    SO THE CHECK IS PER-PATH RATHER THAN PER-PAGE, which is the whole point. The
+    site-wide walk sees whatever .html files exist and validates those; it cannot
+    notice a file that was never created. This names the three paths and fails on
+    absence, which is the only way a missing page is louder than a present one.
+
+    AND IT ASSERTS THE THREE ARE BYTE-IDENTICAL, NOT MERELY PRESENT. They are the
+    same page by design - the script reads location.pathname and decides from
+    that, so one file serves all three URLs. Copies that drift are the likely
+    failure here: a fix applied to one path and not the others would leave a route
+    quietly broken, which is the shape of the original defect.
+    """
+    present = {}
+    for rel in AUTH_FORWARDER_PATHS:
+        path = os.path.join(root, *rel.split("/"))
+        if not os.path.exists(path):
+            fail(rel, 1,
+                 "MISSING. Supabase sends this URL, so a path that is not a file "
+                 "is served 404.html by GitHub Pages. Copy auth/index.html here.")
+            continue
+        raw = open(path, encoding="utf-8").read()
+        present[rel] = raw
+
+        # The 404 page, served or copied here by mistake, is the defect this check
+        # was written for; it must never pass as the forwarder.
+        if "Page not found" in raw or "does not exist on briq.ie" in raw:
+            fail(rel, 1, "serves the 404 page rather than the auth forwarder")
+            continue
+
+        for marker, what in AUTH_FORWARDER_MARKERS:
+            if marker not in raw:
+                line = 1
+                for n, l in enumerate(raw.splitlines(), 1):
+                    if "<script" in l:
+                        line = n
+                        break
+                fail(rel, line,
+                     "has lost %s (%r). Without it this page is not a forwarder."
+                     % (what, marker))
+
+    # Byte-identical, with /auth/index.html as the reference.
+    reference = present.get("auth/index.html")
+    if reference is not None:
+        for rel, raw in present.items():
+            if rel != "auth/index.html" and raw != reference:
+                fail(rel, 1,
+                     "differs from auth/index.html. The three paths are one page "
+                     "by design and must stay byte-identical, or a fix lands on "
+                     "one route and not the others.")
+
+
 def check_dates(root, html_files):
     """(e) The privacy date agrees with its meta description; delete-account
     prints a date in its masthead."""
@@ -852,6 +935,7 @@ def main(argv):
         check_structure(rel, path, raw, lines, html_files, root)
 
     check_dates(root, html_files)
+    check_auth_forwarders(root, html_files)
     if app is None:
         check_recipients(root, html_files, EXPECTED_RECIPIENTS,
                          "from this script's fallback list")
